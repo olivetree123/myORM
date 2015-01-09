@@ -19,15 +19,15 @@ class MySQLConnectionPool(object):
 			conn = MySQLdb.connect(host=host,user=user,passwd=passwd,db=db,port=port)
 			self.mysql_pool.put(conn)
 
-	def conn_get():
+	def conn_get(self):
 		try:
 			conn = self.mysql_pool.get(block = False)
 		except Queue.Empty:
 			conn = MySQLdb.connect(host=self.host,user=self.user,passwd=self.passwd,db=self.db,port=self.port)
 		return conn
 
-	def conn_close(conn):
-		if self.mysql_pool.qsize()<size:
+	def conn_close(self,conn):
+		if self.mysql_pool.qsize()<self.size:
 			self.mysql_pool.put(conn)
 		else:
 			conn.close()

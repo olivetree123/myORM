@@ -28,12 +28,15 @@ class Objects(object):
 		cursor = conn.cursor()
 		sql = 'select * from %s' % self.table
 		print 'sql : ',sql
+		results = []
 		try:
 			cursor.execute(sql)
+			results = cursor.fetchall()
 		except Exception,e:
 			print e
 		cursor.close()
 		self.pool.conn_close(conn)
+		return results
 
 	def filer(self,**filters):
 		conn = self.pool.conn_get()
@@ -42,20 +45,23 @@ class Objects(object):
 		for key in filters:
 			sql = sql + key+'='+filters[key]+' and '
 		sql = sql[:-4]
+		results = []
 		print 'sql : ',sql
 		try:
 			cursor.execute(sql)
+			results = cursor.fetchall()
 		except Exception,e:
 			print e
 		cursor.close()
 		self.pool.conn_close(conn)
+		return results
 
 	def insert(self,**filters):
 		conn = self.pool.conn_get()
 		cursor = conn.cursor()
-		keys = tuple(filters.keys())
-		values = tuple([filters[key] for key in keys])
-		sql = 'insert into '+self.table+' %s values %s' % (str(keys),str(values))
+		keys = '('+','.join(filters.keys())+')'
+		values = tuple([filters[key] for key in filters.keys()])
+		sql = 'insert into '+self.table+'%s values %s' % (keys,str(values))
 		print 'sql : ',sql
 		try:
 			cursor.execute(sql)
@@ -66,17 +72,15 @@ class Objects(object):
 		self.pool.conn_close(conn)
 
 
+class MyModelMetaclass(type):
+	def __new__(cls,name,bases,attrs):
+		cls._table_ = name.lower()
+		cls.objects = Objects(name.lower())
+		return type.__new__(cls,name,bases,attrs)
 
 
 class Model(object):
 
-	_table_ = ''
-	print '_table_ : ',_table_
-	objects = Objects(_table_)
-
-	def __init__(self):
-		name = self.__class__.__name__
-		self.table = name.lower()
+	__metaclass__ = MyModelMetaclass
 
 
-	
