@@ -1,0 +1,7 @@
+1. 执行 sql语句前根据 class中各字段的类型检查数据类型是否匹配。
+2. 添加结果集缓存。
+3. 抛出异常。
+4. 支持操作 lte/gte/in 等。
+
+参考：
+http://www.oschina.net/translate/django-querysets

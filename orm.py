@@ -10,31 +10,40 @@ class Field(object):
 		self.maxsize = maxsize
 
 class FieldInt(Field):
-	pass
+	def __init__(self,primary_key = False,auto_increment = False,null = True,default = None,maxsize = 0):
+		self.type = int
+		super(FieldInt,self).__init__(primary_key,auto_increment,null,default,maxsize)
 
 class FieldChar(Field):
-	pass
+	def __init__(self,primary_key = False,auto_increment = False,null = True,default = None,maxsize = 0):
+		self.type = str
+		super(FieldChar,self).__init__(primary_key,auto_increment,null,default,maxsize)
 
 
 class Objects(object):
 	
-	def __init__(self,table = ''):
+	def __init__(self,table = '',attrs = None):
 		self.pool = MySQLConnectionPool()
 		self.table = table
+		self.attrs = attrs
 		self.sql = ''
 		self.conn = None
 		self.cursor = None
 
+
 	def __iter__(self):
-		conn = self.pool.conn_get()
-		cursor = conn.cursor()
-		print 'sql : ',self.sql
-		cursor.execute(self.sql)
-		self.cursor = cursor
-		self.conn = conn
+		if self.sql:
+			conn = self.pool.conn_get()
+			cursor = conn.cursor()
+			print 'sql : ',self.sql
+			cursor.execute(self.sql)
+			self.cursor = cursor
+			self.conn = conn
 		return self
 
 	def next(self):
+		if not self.cursor:
+			raise StopIteration
 		result = self.cursor.fetchone()
 		if not result:
 			self.cursor.close()
@@ -58,16 +67,20 @@ class Objects(object):
 		return results
 
 	def filter(self,**filters):
-		if not self.sql:
-			self.sql = 'select * from '+self.table+' where '
-		else:
-			self.sql = self.sql+' and '
+		if not filters:	return self
+		self.sql = 'select * from '+self.table+' where ' if not self.sql else self.sql+' and '
 		for key in filters:
-			if isinstance(filters[key],basestring):
-				self.sql = self.sql + key+'="'+str(filters[key])+'" and '
+			if self.attrs and self.attrs.get(key,False) and isinstance(filters[key],self.attrs[key].type):
+				if isinstance(filters[key],basestring):
+					self.sql = self.sql + key+'="'+str(filters[key])+'" and '
+				else:
+					self.sql = self.sql + key+'='+str(filters[key])+' and '
 			else:
-				self.sql = self.sql + key+'='+str(filters[key])+' and '
-		self.sql = self.sql[:-4]
+				self.sql = ''
+				print 'type is error'
+				break
+		if self.sql:
+			self.sql = self.sql[:-4]
 		return self
 
 	def limit(self,num = 0):
@@ -114,8 +127,9 @@ class Objects(object):
 
 class MyModelMetaclass(type):
 	def __new__(cls,name,bases,attrs):
+		print 'attrs : ',attrs
 		cls._table_ = name.lower()
-		cls.objects = Objects(name.lower())
+		cls.objects = Objects(name.lower(),attrs)
 		return type.__new__(cls,name,bases,attrs)
 
 
