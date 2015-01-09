@@ -7,8 +7,11 @@ class User(Model):
 	name = FieldChar(maxsize = 100,null = False)
 	age = FieldInt(default = 20)
 
-User.objects.insert(name = 'gaojian',age = 24)
+#User.objects.insert(name = 'olivetree',age = 24)
 
-s = User.objects.all()
-print s
+#User.objects.filter(name = 'gaojian').update(name = 'gao')
+
+results = User.objects.filter(name = 'gao').filter(age = 24)
+for r in results:
+	print r
 
