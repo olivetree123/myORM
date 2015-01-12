@@ -9,9 +9,9 @@ class User(Model):
 
 #User.objects.insert(name = 'olivetree',age = 24)
 
-#User.objects.filter(name = 'gaojian').update(name = 'gao')
+#User.objects.filter(name = 'gao').update(name = 'gaou')
 
-results = User.objects.filter(name = 'gao').filter(age = 24)
+results = User.objects.filter(name = 'gaou').filter(age = 24)
 for r in results:
 	print r
 

@@ -1,4 +1,8 @@
 #coding:utf-8
+import json
+import redis
+import hashlib
+import memcache
 from db import MySQLConnectionPool
 
 class Field(object):
@@ -29,27 +33,45 @@ class Objects(object):
 		self.sql = ''
 		self.conn = None
 		self.cursor = None
+		self.result = None
+		self.i = 0
+		#self.mc = memcache.Client(['127.0.0.1:11211'],debug = 1)
+		self.redis = redis.Redis(host = 'localhost',port = 6379)
+
 
 
 	def __iter__(self):
 		if self.sql:
+			print 'iter sql : ',self.sql
 			conn = self.pool.conn_get()
 			cursor = conn.cursor()
-			print 'sql : ',self.sql
-			cursor.execute(self.sql)
-			self.cursor = cursor
-			self.conn = conn
+			key = self.table
+			field = hashlib.md5(self.sql).hexdigest()
+			self.result = self.redis.hget(key,field)
+			if not self.result:
+				print 'no cache'
+				cursor.execute(self.sql)
+				self.result = cursor.fetchall()
+				self.redis.hset(key,field,json.dumps(self.result))
+			else:
+				self.result = json.loads(self.result)
+				print 'yes,there is'
+
+			#self.cursor = cursor
+			#self.conn = conn
+			cursor.close()
+			self.pool.conn_close(conn)
+			self.finish(clr_res = 0)
 		return self
 
 	def next(self):
-		if not self.cursor:
+		if len(self.result)>self.i:
+			self.i = self.i + 1
+			return self.result[self.i-1]
+		else:
+			self.finish()
 			raise StopIteration
-		result = self.cursor.fetchone()
-		if not result:
-			self.cursor.close()
-			self.pool.conn_close(self.conn)
-			raise StopIteration
-		return result
+
 
 	def all(self,**filters):
 		conn = self.pool.conn_get()
@@ -102,6 +124,8 @@ class Objects(object):
 		conn.commit()
 		cursor.close()
 		self.pool.conn_close(conn)
+		self.del_cache()
+		self.finish()
 
 	def update(self,**filters):
 		sql = ''
@@ -118,10 +142,21 @@ class Objects(object):
 			conn.commit()
 			cursor.close()
 			self.pool.conn_close(conn)
+			self.del_cache()
 		self.finish()
 
-	def finish(self):
+	def finish(self,clr_res = 1):
+		self.i = 0
 		self.sql = ''
+		if clr_res:
+			self.result = None
+
+	def del_cache(self,table = ''):
+		table = self.table if not table else table
+		keys = self.redis.hkeys(self.table)
+		print keys
+		for key in keys:
+			self.redis.hdel(self.table,key)
 
 
 
